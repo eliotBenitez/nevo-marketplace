@@ -1,9 +1,10 @@
 {
   "schemaVersion": 1,
   "name": "Nevo Marketplace",
-  "updatedAt": "2026-07-05T00:00:00.000Z",
+  "updatedAt": "2026-07-06T00:00:00.000Z",
   "featured": [
-    "nevo.quick-date"
+    "nevo.quick-date",
+    "nevo.callout"
   ],
   "categories": [
     {
