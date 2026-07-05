@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "name": "Nevo Marketplace",
+  "updatedAt": "2026-07-05T00:00:00.000Z",
+  "featured": [
+    "nevo.quick-date"
+  ],
+  "categories": [
+    {
+      "id": "productivity",
+      "title": "Productivity"
+    },
+    {
+      "id": "editor",
+      "title": "Editor"
+    }
+  ]
+}

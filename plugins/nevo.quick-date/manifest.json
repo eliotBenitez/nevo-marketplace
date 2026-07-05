@@ -1,0 +1,18 @@
+{
+  "id": "nevo.quick-date",
+  "name": "Quick Date",
+  "version": "1.0.0",
+  "description": "Adds slash commands for inserting dates, times, ISO timestamps, week numbers, and relative day labels.",
+  "enabled": true,
+  "kind": "marketplace",
+  "source": "marketplace",
+  "entryPoint": "index.js",
+  "apiVersion": "1.0.0",
+  "nevoVersionRange": "^1.0.0",
+  "editorCapabilities": [
+    "editor.write"
+  ],
+  "uiCapabilities": [],
+  "workspaceCapabilities": [],
+  "priority": 10
+}
