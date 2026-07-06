@@ -24,8 +24,9 @@ function ensureStyles() {
 .nv-cb {
   --cb-accent: ${VARIANTS.info.accent};
   display: flex;
-  gap: 10px;
-  padding: 10px 14px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
   border-radius: 10px;
   border: 1px solid color-mix(in srgb, var(--cb-accent) 32%, transparent);
   border-left: 3px solid var(--cb-accent);
@@ -37,12 +38,16 @@ function ensureStyles() {
 .nv-cb[data-variant="danger"] { --cb-accent: ${VARIANTS.danger.accent}; }
 .nv-cb[data-variant="note"] { --cb-accent: ${VARIANTS.note.accent}; }
 .nv-cb__icon {
-  flex: 0 0 auto;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
   border: none;
   background: transparent;
   cursor: pointer;
   font-size: 18px;
-  line-height: 1.6;
+  line-height: 1;
   padding: 0;
   user-select: none;
 }
