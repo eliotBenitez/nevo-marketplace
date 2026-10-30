@@ -5,7 +5,7 @@ Callout adds a **container block** that highlights a passage of content — a ti
 ## Usage
 
 - Type `/callout` (or `/note`, `/warning`, …) and pick **Callout** from the slash menu. The cursor lands inside the callout so you can start typing immediately.
-- Click the icon on the left to open the type picker and switch between variants.
+- Open the callout's popover and pick a **Type** to switch between variants.
 
 ## Variants
 
@@ -24,11 +24,21 @@ The callout serializes into every export format:
 - **Markdown** — an Obsidian-style blockquote: `> [!info]` followed by the quoted body.
 - **HTML** — `<aside class="nv-callout-block" data-variant="…">` wrapping the children.
 - **Typst** — a `#block(...)` with the rendered children inside.
+- **DOCX** — a bold `icon + label` heading paragraph followed by the children.
 
 ## Permissions
 
-Requires only `editor.write`: it registers a block type (node + node view + popover + serializers) and a slash item. No filesystem or network access.
+- `editor.schema` — registers the `callout_block` node.
+- `editor.write` — the slash item inserts a callout.
+- `editor.read` — serializers receive the node for export.
+- `ui.contributions` — the host-rendered type popover.
+
+No filesystem, storage, or network access.
 
 ## How it works
 
-The plugin is a dependency-free browser ES module. It relies on the container block API: `render()` returns `{ dom, contentDOM }`, so ProseMirror renders the editable child content directly into `contentDOM`, while the icon lives in the block "chrome" (`contentEditable=false`). Variant colors are injected once via a scoped `<style>` element using `color-mix` so they adapt to light and dark themes.
+The plugin is an SDK V2 (`sandboxed-worker`) dependency-free ES module running in an isolated Worker. The block is described with the declarative host UI DSL: an `<aside>` with the variant bound to `data-variant` and a `contentSlot` where ProseMirror renders the editable children. Variant icons and colors come from scoped CSS (`::before` content and `color-mix`), so they adapt to light and dark themes without any DOM code.
+
+## Upgrading from 1.x
+
+2.0.0 keeps the persisted contract — node name `callout_block`, attr `variant`, content `block+` — so existing callouts open unchanged and no data migration is needed (`dataVersion` stays `1`).

@@ -1,18 +1,22 @@
 {
   "id": "nevo.callout",
   "name": "Callout",
-  "version": "1.0.0",
-  "description": "Adds a container callout block (info, success, warning, danger, note) with editable rich content, a type picker, and Markdown/HTML/Typst export.",
+  "version": "2.0.0",
+  "description": "Adds a container callout block (info, success, warning, danger, note) with editable rich content, a type picker, and Markdown/HTML/Typst/DOCX export.",
   "enabled": true,
   "kind": "marketplace",
   "source": "marketplace",
   "entryPoint": "index.js",
-  "apiVersion": "1.0.0",
-  "nevoVersionRange": "^1.0.0",
-  "editorCapabilities": [
-    "editor.write"
+  "apiVersion": "2.0.0",
+  "executionMode": "sandboxed-worker",
+  "dataVersion": 1,
+  "capabilities": [
+    "editor.read",
+    "editor.write",
+    "editor.schema",
+    "ui.contributions"
   ],
-  "uiCapabilities": [],
-  "workspaceCapabilities": [],
-  "priority": 10
+  "nevoVersionRange": "^1.0.0",
+  "priority": 10,
+  "settingsSchema": []
 }

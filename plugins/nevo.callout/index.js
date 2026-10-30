@@ -1,5 +1,7 @@
+// SDK V2 sandboxed-worker plugin. Dependency-free: the SDK helpers it needs
+// (definePlugin, transaction, ui) only build plain JSON, so they are inlined.
+
 const NODE_NAME = 'callout_block'
-const STYLE_ID = 'nevo-callout-block-styles'
 
 const VARIANTS = {
   info: { icon: '💡', label: 'Info', accent: '#3b82f6' },
@@ -12,173 +14,151 @@ const VARIANTS = {
 const DEFAULT_VARIANT = 'info'
 
 function normalizeVariant(value) {
-  return typeof value === 'string' && VARIANTS[value] ? value : DEFAULT_VARIANT
+  return typeof value === 'string' && Object.hasOwn(VARIANTS, value) ? value : DEFAULT_VARIANT
 }
 
-function ensureStyles() {
-  if (typeof document === 'undefined' || document.getElementById(STYLE_ID)) return
-  const style = document.createElement('style')
-  style.id = STYLE_ID
-  style.textContent = `
-.nv-plugin-block--${NODE_NAME} { margin: 8px 0; }
+function escapeHtml(value) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function element(tag, props = {}, children = []) {
+  return { type: 'element', tag, props, children }
+}
+
+// The host prefixes every selector with the plugin scope, which sits on the UI root,
+// so styles target `.nv-cb` one level below it. The host forbids the word "body" here.
+const variantCss = Object.entries(VARIANTS)
+  .map(([name, variant]) => `
+.nv-cb[data-variant="${name}"] { --cb-accent: ${variant.accent}; }
+.nv-cb[data-variant="${name}"] .nv-cb__icon::before { content: "${variant.icon}"; }`)
+  .join('')
+
+const css = `
 .nv-cb {
   --cb-accent: ${VARIANTS.info.accent};
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  margin: 8px 0;
   padding: 12px 14px;
   border-radius: 10px;
   border: 1px solid color-mix(in srgb, var(--cb-accent) 32%, transparent);
   border-left: 3px solid var(--cb-accent);
   background: color-mix(in srgb, var(--cb-accent) 9%, transparent);
 }
-.nv-cb[data-variant="info"] { --cb-accent: ${VARIANTS.info.accent}; }
-.nv-cb[data-variant="success"] { --cb-accent: ${VARIANTS.success.accent}; }
-.nv-cb[data-variant="warning"] { --cb-accent: ${VARIANTS.warning.accent}; }
-.nv-cb[data-variant="danger"] { --cb-accent: ${VARIANTS.danger.accent}; }
-.nv-cb[data-variant="note"] { --cb-accent: ${VARIANTS.note.accent}; }
 .nv-cb__icon {
   flex: 0 0 26px;
   width: 26px;
   height: 26px;
   display: grid;
   place-items: center;
-  border: none;
-  background: transparent;
-  cursor: pointer;
   font-size: 18px;
   line-height: 1;
-  padding: 0;
   user-select: none;
 }
-.nv-cb__body { flex: 1 1 auto; min-width: 0; }
-.nv-cb__body > :first-child { margin-top: 0; }
-.nv-cb__body > :last-child { margin-bottom: 0; }
+.nv-cb__content { flex: 1 1 auto; min-width: 0; }
+.nv-cb__content > :first-child { margin-top: 0; }
+.nv-cb__content > :last-child { margin-bottom: 0; }
+${variantCss}
 `
-  document.head.appendChild(style)
+
+function variantOf(input) {
+  const node = input && input.node
+  return normalizeVariant(node && node.attrs && node.attrs.variant)
 }
 
-const schema = {
-  group: 'block',
-  content: 'block+',
-  defining: true,
-  attrs: { variant: { default: DEFAULT_VARIANT } },
-  parseDOM: [
-    {
-      tag: 'aside[data-nevo-callout-block]',
-      getAttrs: (dom) => ({ variant: normalizeVariant(dom.getAttribute('data-variant')) }),
-      contentElement: '[data-callout-body]',
-    },
-  ],
-  toDOM: (node) => [
-    'aside',
-    {
-      'data-nevo-callout-block': 'true',
-      'data-variant': normalizeVariant(node.attrs && node.attrs.variant),
-      class: 'nv-cb',
-    },
-    ['div', { 'data-callout-body': 'true', class: 'nv-cb__body' }, 0],
-  ],
+function serializeMarkdown(input) {
+  const quoted = String(input.children ?? '')
+    .split('\n')
+    .map((line) => (line.length ? `> ${line}` : '>'))
+    .join('\n')
+  return `> [!${variantOf(input)}]\n${quoted}`
 }
 
-function render(node, helpers) {
-  ensureStyles()
-  const variant = normalizeVariant(node.attrs && node.attrs.variant)
+function serializeHtml(input) {
+  return `<aside class="nv-callout-block" data-variant="${escapeHtml(variantOf(input))}">\n${String(input.children ?? '')}\n</aside>`
+}
 
-  const dom = document.createElement('aside')
-  dom.className = 'nv-cb'
-  dom.dataset.variant = variant
+function serializeTypst(input) {
+  return `#block(inset: 10pt, radius: 6pt, stroke: 0.5pt + luma(200))[\n${String(input.children ?? '')}\n]`
+}
 
-  const icon = document.createElement('button')
-  icon.type = 'button'
-  icon.className = 'nv-cb__icon'
-  icon.contentEditable = 'false'
-  icon.textContent = VARIANTS[variant].icon
-  icon.title = VARIANTS[variant].label
-  icon.setAttribute('aria-label', 'Change callout type')
-
-  const onMouseDown = (event) => event.preventDefault()
-  const onClick = (event) => {
-    event.preventDefault()
-    event.stopPropagation()
-    helpers.requestEdit(icon.getBoundingClientRect())
-  }
-  icon.addEventListener('mousedown', onMouseDown)
-  icon.addEventListener('click', onClick)
-
-  const body = document.createElement('div')
-  body.className = 'nv-cb__body'
-
-  dom.append(icon, body)
-
+function serializeDocx(input) {
+  const variant = VARIANTS[variantOf(input)]
   return {
-    dom,
-    contentDOM: body,
-    update(nextNode) {
-      const next = normalizeVariant(nextNode.attrs && nextNode.attrs.variant)
-      dom.dataset.variant = next
-      icon.textContent = VARIANTS[next].icon
-      icon.title = VARIANTS[next].label
-    },
-    destroy() {
-      icon.removeEventListener('mousedown', onMouseDown)
-      icon.removeEventListener('click', onClick)
-    },
+    blocks: [
+      { type: 'paragraph', children: [{ type: 'text', text: `${variant.icon} ${variant.label}`, bold: true }] },
+      { type: 'children' },
+    ],
   }
 }
 
-const popover = {
-  title: 'Callout',
-  removable: true,
-  fields: [
-    {
-      key: 'variant',
-      type: 'select',
-      label: 'Type',
-      options: Object.keys(VARIANTS).map((value) => ({
-        value,
-        label: `${VARIANTS[value].icon} ${VARIANTS[value].label}`,
-      })),
-    },
-  ],
-}
-
-const serialize = {
-  markdown: (node, helpers) => {
-    const variant = normalizeVariant(node.attrs && node.attrs.variant)
-    const body = helpers.serializeChildren()
-    const prefixed = body
-      .split('\n')
-      .map((line) => (line.length ? `> ${line}` : '>'))
-      .join('\n')
-    return `> [!${variant}]\n${prefixed}`
-  },
-  html: (node, helpers) => {
-    const variant = normalizeVariant(node.attrs && node.attrs.variant)
-    return `<aside class="nv-callout-block" data-variant="${helpers.escapeHtml(variant)}">\n${helpers.serializeChildren()}\n</aside>`
-  },
-  typst: (node, helpers) => {
-    return `#block(inset: 10pt, radius: 6pt, stroke: 0.5pt + luma(200))[\n${helpers.serializeChildren()}\n]`
-  },
-}
-
-const slashItem = {
-  id: 'callout.insert',
-  title: 'Callout',
-  category: 'layout',
-  keywords: ['callout', 'admonition', 'note', 'info', 'warning', 'danger', 'выноска', 'примечание', 'заметка'],
-  defaultAttrs: { variant: DEFAULT_VARIANT },
-}
-
-export default {
-  onRegister(ctx) {
-    ctx.registerBlockType({
+export default Object.freeze({
+  setup(api) {
+    api.blockType({
+      id: `${api.pluginId}.block`,
       name: NODE_NAME,
-      schema,
-      render,
-      popover,
-      serialize,
-      slashItem,
+      schema: {
+        group: 'block',
+        content: 'block+',
+        defining: true,
+        attrs: { variant: { default: DEFAULT_VARIANT } },
+      },
+      ui: element('aside', { role: 'note' }, [
+        element('div', { class: 'nv-cb', 'data-variant': 'attrs.variant' }, [
+          element('span', { class: 'nv-cb__icon', 'aria-hidden': 'true' }),
+          element('div', { class: 'nv-cb__content' }, [{ type: 'contentSlot' }]),
+        ]),
+      ]),
+      css,
     })
+
+    api.register('popover', {
+      id: `${api.pluginId}.variant`,
+      nodeType: NODE_NAME,
+      title: 'Callout',
+      removable: true,
+      fields: [
+        {
+          key: 'variant',
+          type: 'select',
+          label: 'Type',
+          options: Object.entries(VARIANTS).map(([value, variant]) => ({
+            value,
+            label: `${variant.icon} ${variant.label}`,
+          })),
+        },
+      ],
+    })
+
+    api.slashItem({
+      id: `${api.pluginId}.insert`,
+      title: 'Callout',
+      category: 'layout',
+      keywords: ['callout', 'admonition', 'note', 'info', 'warning', 'danger', 'выноска', 'примечание', 'заметка'],
+    }, (_input, { editor }) => {
+      if (!editor) throw new Error('Callout requires an editor invocation')
+      return {
+        type: 'transaction',
+        revision: editor.revision,
+        operations: [{
+          type: 'insertNode',
+          nodeType: NODE_NAME,
+          attrs: { variant: DEFAULT_VARIANT },
+          at: 'selection.from',
+        }],
+        scrollIntoView: true,
+      }
+    })
+
+    const serializers = { markdown: serializeMarkdown, html: serializeHtml, typst: serializeTypst, docx: serializeDocx }
+    for (const [format, serialize] of Object.entries(serializers)) {
+      api.serializer({ id: `${api.pluginId}.serialize-${format}`, nodeType: NODE_NAME, format }, serialize)
+    }
   },
-}
+})
